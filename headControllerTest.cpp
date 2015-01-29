@@ -1,5 +1,5 @@
 #include <headControllerTest.hpp>
-
+#include <stdlib.h>
 
 using namespace std;
 using namespace yarp::os;
@@ -50,7 +50,7 @@ void robotPart::update()
 //     msg.addDouble(_velocity);
 //     out_port.write(msg);
     
-    double posRef = control->compute();
+    double posRef = control->home + control->compute();
     printf("new ref = %f\n", posRef);
     posDir->setPosition(control->joint, posRef);
 
@@ -215,19 +215,21 @@ bool LookModule::configure(yarp::os::ResourceFinder &rf)
 
 ///////////////// reading config file //////////////////////////////////
 
+    // vel control params
+    int joint =  rf.check("joint", Value(0), "joint to be controlled").asInt();
+    char jointString[32]; sprintf(jointString,"%d",joint);
+    int type  =  rf.check("type", Value(0), "type of velocity profile").asInt();   // 0= sinusoidale, 1=gradino...
+    int amplitude =  rf.check("amp", Value(10), "max velocity in degrees/sec").asInt();
+    int period    =  rf.check("period", Value(1), "period of the waveform in sec").asInt();
+
     // port names
     ConstString prefix = "/";
     ConstString robotName = prefix + rf.check("robot",Value("robot"),"Getting robot name").asString().c_str();
     ConstString partName  = rf.find("part").asString().c_str();
     ConstString portName = (robotName + "/" + partName);
-    ConstString outPortName = (prefix + "velInterface/" + partName);
+    ConstString outPortName = (prefix + "velInterface/" + partName + "_j" + jointString);
 
-    // vel control params
-    int joint =  rf.check("joint", Value(0), "joint to be controlled").asInt();
-    int type  =  rf.check("type", Value(0), "type of velocity profile").asInt();   // 0= sinusoidale, 1=gradino...
-    int amplitude =  rf.check("amp", Value(10), "max velocity in degrees/sec").asInt();
-    int period    =  rf.check("period", Value(1), "period of the waveform in sec").asInt();
-
+   
 
     //  printa la configurazione per vedere se è corretta
     cout << "Running with:" << endl;
@@ -256,7 +258,7 @@ bool LookModule::configure(yarp::os::ResourceFinder &rf)
  ///////////// connettiti col robot
     Property options;
     options.put("device", "remote_controlboard"); // aggiungo parametri necessari
-    options.put("local", "...");
+    options.put("local", std::string("/lookAround/")+partName.c_str()+"_j"+jointString);
     options.put("remote", portName);
 
 
